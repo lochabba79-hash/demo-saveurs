@@ -10,7 +10,6 @@
     nav2: { ar: 'القائمة', fr: 'Menu' },
     nav3: { ar: 'احجز', fr: 'Réserver' },
     navLabel: { ar: 'أقسام الصفحة', fr: 'Sections de la page' },
-    themeToggle: { ar: 'تبديل المظهر', fr: 'Changer de thème' },
     book: { ar: 'احجز طاولة', fr: 'Réserver' },
     kicker: { ar: 'سطيف · منذ 2019 · نار الحطب', fr: 'Sétif · depuis 2019 · feu de bois' },
     heroTitle: { ar: 'النار أوّلاً، <em>والباقي يتبع</em>', fr: 'Le feu d’abord, <em>le reste suit</em>' },
@@ -107,22 +106,6 @@
   }
   document.getElementById('langToggle').addEventListener('click', function () { lang = lang === 'ar' ? 'fr' : 'ar'; applyLang(); });
 
-  var themeBtn = document.getElementById('themeToggle');
-  var theme = 'system';
-  try { theme = localStorage.getItem('safran-theme') || 'system'; } catch (e) {}
-  function applyTheme() {
-    if (theme === 'system') document.documentElement.removeAttribute('data-theme');
-    else document.documentElement.setAttribute('data-theme', theme);
-    var icon = themeBtn && themeBtn.querySelector('i');
-    if (icon) icon.className = 'ph-light ' + (theme === 'dark' ? 'ph-sun' : theme === 'light' ? 'ph-moon' : 'ph-monitor');
-    try { localStorage.setItem('safran-theme', theme); } catch (e) {}
-  }
-  themeBtn.addEventListener('click', function () {
-    theme = theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system';
-    applyTheme();
-  });
-  applyTheme();
-
   /* Scrollspy: highlight the nav link of the section in view */
   var spyTargets = ['story', 'dish', 'menu', 'book'];
   var spy = new IntersectionObserver(function (es) {
@@ -144,16 +127,25 @@
   }, { threshold: 0.15 });
   document.querySelectorAll('.rv').forEach(function (el) { io.observe(el); });
 
-  /* Hero parallax + progress */
+  /* Hero parallax + cinematic scroll exit (bg drifts, copy lifts and dissolves, scrim deepens) */
   var heroBg = document.querySelector('.hero__bg');
+  var heroInner = document.querySelector('.hero__inner');
+  var heroScrim = document.querySelector('.hero__scrim');
   var progress = document.getElementById('progress');
   var ticking = false;
   function onScroll() {
     var y = window.scrollY || window.pageYOffset;
-    var max = document.body.scrollHeight - window.innerHeight;
+    var vh = window.innerHeight;
+    var max = document.body.scrollHeight - vh;
     if (progress) progress.style.setProperty('--p', max > 0 ? (y / max).toFixed(3) : 0);
-    if (heroBg && !reduce && y < window.innerHeight * 1.2) {
-      heroBg.style.transform = 'translateY(' + (y * 0.28).toFixed(1) + 'px)';
+    if (!reduce && y < vh * 1.2) {
+      var p = Math.min(y / vh, 1);
+      if (heroBg) heroBg.style.transform = 'translateY(' + (y * 0.28).toFixed(1) + 'px)';
+      if (heroInner) {
+        heroInner.style.transform = 'translateY(' + (-y * 0.32).toFixed(1) + 'px)';
+        heroInner.style.opacity = (1 - p * 1.1).toFixed(2);
+      }
+      if (heroScrim) heroScrim.style.opacity = (0.55 + p * 0.45).toFixed(2);
     }
     ticking = false;
   }
@@ -161,9 +153,10 @@
     if (!ticking) { ticking = true; requestAnimationFrame(onScroll); }
   }, { passive: true });
 
-  /* Narrative image swap */
+  /* Narrative image crossfade (all beats preloaded — swap is instant, fade is slow) */
   var narrImg = document.getElementById('narrImg');
   var narrMap = { fire: 'assets/fire-sm.webp', tea: 'assets/tea-sm.webp', dessert: 'assets/still_dessert-sm.webp' };
+  Object.keys(narrMap).forEach(function (k) { var im = new Image(); im.src = narrMap[k]; });
   var bio = new IntersectionObserver(function (es) {
     es.forEach(function (en) {
       var beat = en.target.closest('.beat');
@@ -179,6 +172,33 @@
     });
   }, { threshold: 0.5 });
   document.querySelectorAll('.narr__beats .beat').forEach(function (b) { bio.observe(b); });
+
+  /* Gallery auto-scroll (RTL-aware, pauses offscreen/on touch, off for reduced motion) */
+  var gal = document.querySelector('.gallery');
+  if (gal && !reduce) {
+    var paused = false, idleT = null, inView = false;
+    var rtl = getComputedStyle(gal).direction === 'rtl';
+    var step = rtl ? -1 : 1;
+    new IntersectionObserver(function (es) { inView = es[0].isIntersecting; }).observe(gal);
+    gal.addEventListener('pointerdown', function () { paused = true; clearTimeout(idleT); }, { passive: true });
+    ['pointerup', 'pointerleave'].forEach(function (ev) {
+      gal.addEventListener(ev, function () { clearTimeout(idleT); idleT = setTimeout(function () { paused = false; }, 4000); }, { passive: true });
+    });
+    gal.addEventListener('mouseenter', function () { paused = true; });
+    gal.addEventListener('mouseleave', function () { paused = false; });
+    gal.style.scrollSnapType = 'none'; /* auto mode: snap fights programmatic scroll */
+    var _restore = function () { gal.style.scrollSnapType = ''; };
+    gal.addEventListener('pointerdown', _restore, { once: true });
+    setInterval(function () {
+      if (paused || !inView) return;
+      var max = gal.scrollWidth - gal.clientWidth;
+      if (max <= 0) return;
+      var next = gal.scrollLeft + step;
+      if (!rtl && next >= max - 2) next = 0;
+      if (rtl && next <= -max + 2) next = 0;
+      gal.scrollLeft = next;
+    }, 30);
+  }
 
   /* Booking (same proven pattern) */
   function cur(id) {
