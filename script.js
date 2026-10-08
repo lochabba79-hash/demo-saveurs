@@ -123,6 +123,21 @@
   });
   applyTheme();
 
+  /* Scrollspy: highlight the nav link of the section in view */
+  var spyTargets = ['story', 'dish', 'menu', 'book'];
+  var spy = new IntersectionObserver(function (es) {
+    es.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      document.querySelectorAll('#nav a').forEach(function (a) {
+        a.classList.toggle('lit', a.getAttribute('href') === '#' + en.target.id);
+      });
+    });
+  }, { rootMargin: '-40% 0px -55% 0px' });
+  spyTargets.forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) spy.observe(el);
+  });
+
   /* Reveals */
   var io = new IntersectionObserver(function (es) {
     es.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
