@@ -44,6 +44,7 @@
     d3m: { ar: 'شخشوخة بوسعادية', fr: 'Chakhchoukha de Boussaâda' },
     d4m: { ar: 'مقروط + بقلاوة + أتاي', fr: 'Makroud + baklawa + thé' },
     mNote: { ar: 'أسعار وأطباق تجريبية — تُضبط حسب المطعم الحقيقي.', fr: 'Plats et prix fictifs — ajustés selon le vrai restaurant.' },
+    todayLabel: { ar: 'طبق اليوم:', fr: 'Plat du jour :' },
     fKicker: { ar: 'لماذا الزعفران', fr: 'Pourquoi Safran' },
     fTitle: { ar: 'ثلاثة أشياء <em>لا نفعلها أبداً</em>', fr: 'Trois choses <em>jamais</em> faites' },
     f0t: { ar: 'لا تجميد', fr: 'Zéro congélation' },
@@ -221,6 +222,17 @@
       (nameI && nameI.value.trim().length < 3 ? nameI : phoneI).focus();
     }
   });
+
+  /* Dish of the day: real weekday mapping, rotates honestly through the 5 menu dishes */
+  var DISH_KEYS = ['d0m', 'd1m', 'd2m', 'd3m', 'd4m'];
+  function paintToday() {
+    var el = document.getElementById('todayDish');
+    if (!el) return;
+    var key = DISH_KEYS[new Date().getDay() % DISH_KEYS.length];
+    el.textContent = STR[key][lang];
+  }
+  var _applyLang2 = applyLang;
+  applyLang = function () { _applyLang2(); paintToday(); };
 
   applyLang();
   onScroll();
